@@ -27,84 +27,88 @@ let ch_id = null;
 
 Async.series([
 
+	// extract channel id by name
 	(cb) => {
 		(async () => {
 			
-			let conversations = [];
+			let conversations = []
 			try {
 				conversations = await Web.conversations.list();
 			} catch(e) {
-				return cb(e);
+				return cb(e)
 			}
 
 			conversations.channels.forEach((ch) => {
+
 				if ( ch.name == ChannelName ) {
 
-					inline_info(`Found channel ${ch.id}`);
+					inline_info(`Found channel ${ch.id}`)
 
-					ch_id = ch.id;
+					ch_id = ch.id
 				}
-			});
+			})
 
-			cb();
+			cb()
 		})()
 	},
 
+	// delete channel messages in batches
 	(cb) => {
 
-		if ( !ch_id ) return cb();
+		if ( !ch_id ) return cb()
 
 		// 100 at a time by default
 		let process_next_batch = async () => {
 
-			let history = null;
+			let history = null
 			try {
 				history = await Web.conversations.history({channel:ch_id});
 			} catch(e) {
-				return cb(e);
+				return cb(e)
 			}
 
-			if ( history.messages.length <= 0 ) return cb();
+			if ( history.messages.length <= 0 ) return cb()
 
-			inline_info(`Deleting ${history.messages.length} messages`);
+			inline_info(`Deleting ${history.messages.length} messages`)
 
 			let delete_next_message = async () => {
 
 				if ( history.messages.length <= 0 ) {
-					inline_info(`Starting Next Batch`);
-					return process_next_batch();
+					inline_info(`Starting Next Batch`)
+					return process_next_batch()
 				}
 
-				let message = history.messages.pop();
+				let message = history.messages.pop()
 
-				inline_info(`Deleting Message ${message.ts}`);
+				inline_info(`Deleting Message ${message.ts}`)
 
 				try {
-					await Web.chat.delete({channel: ch_id, ts: message.ts});
+					await Web.chat.delete({channel: ch_id, ts: message.ts})
 				} catch(e) {
-					return cb(e);
+					return cb(e)
 				}
 
 				// throttle, allowed 50 per minute, lets do 45
-				setTimeout(delete_next_message, (1000 * 60) / 45);
-			};
+				setTimeout(delete_next_message, (1000 * 60) / 45)
+			}
 
-			delete_next_message();
-		};
+			delete_next_message()
+		}
 
-		process_next_batch();
+		process_next_batch()
 	}
 
 ], (err) => {
 
 	if (err) {
 
-		console.error(err);
+		console.error(err)
 
 	} else {
 		
-		inline_info(`Done`);
+		inline_info(`Done`)
 
-		console.log("\n") // create new line to pad terminal buffer
+		// create new line to pad terminal buffer
+		console.log("\n") 
 	}
 });
