@@ -18,7 +18,7 @@ node clear channel-name
 ```
 
 ## Notes
-This tool works around Slack's rate limits:
+This tool is sensitive to Slack's rate limits:
 ```
 conversations.list = 20 requests per minute
 conversations.history = 50 requests per minute

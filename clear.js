@@ -1,84 +1,82 @@
+// Slack rate limits
+// conversations.list: 		20 requests per minute
+// conversations.history: 	50 requests per minute
+// chat.delete: 			50 requests per minute
 
-const Config = require('./config.json');
-const Async = require('async');
-const { WebClient } = require('@slack/web-api');
-const Web = new WebClient(Config.oauth_token);
+const Config = require('./config.json')
+const Async = require('async')
+const { WebClient } = require('@slack/web-api')
+const Web = new WebClient(Config.oauth_token)
 
-let inline_info = (msg) => {
+const COLOR_RESET = "\x1b[0m"
+const COLOR_CYAN = "\x1b[36m"
 
-	let reset = "\x1b[0m";
-	let cyan = "\x1b[36m";
-
-	process.stdout.clearLine();
-  	process.stdout.cursorTo(0);
-	process.stdout.write(`${cyan}${msg}${reset}`);
-};
+const inline_info = (msg) => {
+	process.stdout.clearLine()
+  	process.stdout.cursorTo(0)
+	process.stdout.write(`${COLOR_CYAN}${msg}${COLOR_RESET}`)
+}
 
 if ( process.argv.length < 3 ) {
-	console.error('Missing #channel name')
+	console.error('Not enough arguments')
 	process.exit(1)
 }
 
-let ChannelName = process.argv[2];
+let [ bin, script, ChannelName ] = process.argv
 
-inline_info('starting');
+console.log("") // pad terminal one line
 
-let ch_id = null;
+inline_info('Starting')
+
+let ch_id = null
 
 Async.series([
 
-	// extract channel id by name
 	(cb) => {
+
 		(async () => {
 			
 			let conversations = []
 			try {
-				conversations = await Web.conversations.list();
+				conversations = await Web.conversations.list()
 			} catch(e) {
 				return cb(e)
 			}
 
-			conversations.channels.forEach((ch) => {
+			let f = conversations.channels.filter((ch) => ch.name == ChannelName)
+			if ( f.length <= 0 ) {
+				return cb('Channel not found')
+			}
 
-				if ( ch.name == ChannelName ) {
-
-					inline_info(`Found channel ${ch.id}`)
-
-					ch_id = ch.id
-				}
-			})
+			ch_id = f[0].id
+			inline_info(`Found #${ChannelName} (${ch_id})`)
 
 			cb()
 		})()
 	},
 
-	// delete channel messages in batches
 	(cb) => {
-
-		if ( !ch_id ) return cb()
 
 		// 100 at a time by default
 		let process_next_batch = async () => {
 
 			let history = null
 			try {
-				history = await Web.conversations.history({channel:ch_id});
+				history = await Web.conversations.history({channel:ch_id})
 			} catch(e) {
 				return cb(e)
 			}
 
+			// done
 			if ( history.messages.length <= 0 ) return cb()
 
-			inline_info(`Deleting ${history.messages.length} messages`)
+			inline_info(`Deleting next batch of ${history.messages.length} messages`)
 
 			let delete_next_message = async () => {
 
-				if ( history.messages.length <= 0 ) {
-					inline_info(`Starting Next Batch`)
-					return process_next_batch()
-				}
+				if ( history.messages.length <= 0 ) return process_next_batch()
 
-				let message = history.messages.pop()
+				let message = history.messages.shift()
 
 				inline_info(`Deleting Message ${message.ts}`)
 
@@ -100,15 +98,9 @@ Async.series([
 
 ], (err) => {
 
-	if (err) {
+	if (err) return console.error(err)
 
-		console.error(err)
+	inline_info(`Done`)
 
-	} else {
-		
-		inline_info(`Done`)
-
-		// create new line to pad terminal buffer
-		console.log("\n") 
-	}
-});
+	console.log("\n") // pad terminal one line
+})
