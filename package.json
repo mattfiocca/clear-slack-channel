@@ -1,11 +1,9 @@
 {
-	"name": "slack",
+	"name": "clear-slack-channel",
 	"version": "1.0.0",
-	"description": "",
-	"main": "clear-channel-messages.js",
-	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
-	},
+	"description": "A nodejs tool for clearing all messages in a Slack channel",
+	"main": "clear.js",
+	"scripts": {},
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
